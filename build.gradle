@@ -42,3 +42,11 @@ subprojects {
         withSourcesJar()
     }
 }
+
+// Compatibility alias for IDE run configurations that incorrectly try to launch
+// NeoForged's DevLaunch main class as a Gradle task.
+tasks.register('net.neoforged.devlaunch.Main.main()') {
+    group = 'ide'
+    description = 'Alias to :forge:runClient for misconfigured IDE Gradle run configurations.'
+    dependsOn(':forge:runClient')
+}
