@@ -50,3 +50,42 @@ tasks.register('net.neoforged.devlaunch.Main.main()') {
     description = 'Alias to :forge:runClient for misconfigured IDE Gradle run configurations.'
     dependsOn(':forge:runClient')
 }
+
+// Convenience launcher tasks from the root project.
+tasks.register('runForgeClient') {
+    group = 'run'
+    description = 'Run Forge client dev instance.'
+    dependsOn(':forge:runClient')
+}
+
+tasks.register('runForgeServer') {
+    group = 'run'
+    description = 'Run Forge dedicated server dev instance.'
+    dependsOn(':forge:runServer')
+}
+
+tasks.register('runFabricClient') {
+    group = 'run'
+    description = 'Run Fabric client dev instance.'
+    dependsOn(':fabric:runClient')
+}
+
+tasks.register('runFabricServer') {
+    group = 'run'
+    description = 'Run Fabric dedicated server dev instance.'
+    dependsOn(':fabric:runServer')
+}
+
+// Compatibility aliases for IDE run configurations that accidentally map main
+// classes to Gradle task names.
+tasks.register('net.fabricmc.loader.launch.knot.KnotClient.main()') {
+    group = 'ide'
+    description = 'Alias to :fabric:runClient for misconfigured IDE Gradle run configurations.'
+    dependsOn(':fabric:runClient')
+}
+
+tasks.register('net.fabricmc.loader.launch.knot.KnotServer.main()') {
+    group = 'ide'
+    description = 'Alias to :fabric:runServer for misconfigured IDE Gradle run configurations.'
+    dependsOn(':fabric:runServer')
+}
