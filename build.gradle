@@ -1,91 +1,50 @@
 plugins {
-    id 'architectury-plugin' version '3.4-SNAPSHOT'
-    id 'dev.architectury.loom' version '1.7-SNAPSHOT' apply false
+    id 'fabric-loom' version '1.7-SNAPSHOT'
 }
 
-architectury {
-    minecraft = rootProject.minecraft_version
+group = project.mod_group_id
+version = project.mod_version
+
+repositories {
+    mavenCentral()
+    maven { url 'https://maven.fabricmc.net/' }
 }
 
-allprojects {
-    group = rootProject.mod_group_id
-    version = rootProject.mod_version
+dependencies {
+    minecraft "com.mojang:minecraft:${project.minecraft_version}"
+    mappings loom.officialMojangMappings()
 
-    repositories {
-        mavenCentral()
-        maven { url 'https://maven.architectury.dev/' }
-        maven { url 'https://maven.fabricmc.net/' }
-        maven { url 'https://maven.minecraftforge.net/' }
+    modImplementation "net.fabricmc:fabric-loader:${project.fabric_loader_version}"
+    modImplementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_api_version}"
+}
+
+processResources {
+    inputs.property 'version', project.version
+    inputs.property 'mod_id', project.mod_id
+    inputs.property 'mod_name', project.mod_name
+    inputs.property 'mod_description', project.mod_description
+    inputs.property 'mod_authors', project.mod_authors
+    inputs.property 'mod_license', project.mod_license
+    inputs.property 'fabric_loader_version', project.fabric_loader_version
+
+    filesMatching('fabric.mod.json') {
+        expand(
+                version: project.version,
+                mod_id: project.mod_id,
+                mod_name: project.mod_name,
+                mod_description: project.mod_description,
+                mod_authors: project.mod_authors,
+                mod_license: project.mod_license,
+                fabric_loader_version: project.fabric_loader_version
+        )
     }
 }
 
-subprojects {
-    apply plugin: 'java'
-
-    pluginManager.withPlugin('dev.architectury.loom') {
-        loom {
-            silentMojangMappingsLicense()
-        }
-
-        dependencies {
-            minecraft "com.mojang:minecraft:${rootProject.minecraft_version}"
-            mappings loom.officialMojangMappings()
-        }
-    }
-
-    tasks.withType(JavaCompile).configureEach {
-        options.encoding = 'UTF-8'
-        options.release = 17
-    }
-
-    java {
-        withSourcesJar()
-    }
+tasks.withType(JavaCompile).configureEach {
+    options.encoding = 'UTF-8'
+    options.release = 17
 }
 
-// Compatibility alias for IDE run configurations that incorrectly try to launch
-// NeoForged's DevLaunch main class as a Gradle task.
-tasks.register('net.neoforged.devlaunch.Main.main()') {
-    group = 'ide'
-    description = 'Alias to :forge:runClient for misconfigured IDE Gradle run configurations.'
-    dependsOn(':forge:runClient')
-}
-
-// Convenience launcher tasks from the root project.
-tasks.register('runForgeClient') {
-    group = 'run'
-    description = 'Run Forge client dev instance.'
-    dependsOn(':forge:runClient')
-}
-
-tasks.register('runForgeServer') {
-    group = 'run'
-    description = 'Run Forge dedicated server dev instance.'
-    dependsOn(':forge:runServer')
-}
-
-tasks.register('runFabricClient') {
-    group = 'run'
-    description = 'Run Fabric client dev instance.'
-    dependsOn(':fabric:runClient')
-}
-
-tasks.register('runFabricServer') {
-    group = 'run'
-    description = 'Run Fabric dedicated server dev instance.'
-    dependsOn(':fabric:runServer')
-}
-
-// Compatibility aliases for IDE run configurations that accidentally map main
-// classes to Gradle task names.
-tasks.register('net.fabricmc.loader.launch.knot.KnotClient.main()') {
-    group = 'ide'
-    description = 'Alias to :fabric:runClient for misconfigured IDE Gradle run configurations.'
-    dependsOn(':fabric:runClient')
-}
-
-tasks.register('net.fabricmc.loader.launch.knot.KnotServer.main()') {
-    group = 'ide'
-    description = 'Alias to :fabric:runServer for misconfigured IDE Gradle run configurations.'
-    dependsOn(':fabric:runServer')
+java {
+    withSourcesJar()
 }
