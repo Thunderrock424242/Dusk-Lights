@@ -2,11 +2,9 @@ package com.thunder.dusklights;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.registries.Registries;
-import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.tags.TagKey;
-import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
@@ -31,33 +29,6 @@ public final class DuskLightsLogic {
 
     public static TagKey<Block> daylightLinkableTag() {
         return DAYLIGHT_LINKABLE;
-    }
-
-    public static boolean handleLightLinkUse(ServerLevel level, Player player, BlockPos pos) {
-        if (!player.isShiftKeyDown()) {
-            return false;
-        }
-
-        BlockState state = level.getBlockState(pos);
-        if (!state.is(DAYLIGHT_LINKABLE)) {
-            return false;
-        }
-
-        LinkedLightsSavedData data = LinkedLightsSavedData.get(level);
-        boolean linked = data.toggleLinked(pos.immutable());
-
-        if (linked) {
-            int currentBrightness = calculateBrightness(level);
-            String currentStateKey = currentBrightness > 0
-                    ? "message.dusklights.state_on"
-                    : "message.dusklights.state_off";
-            player.displayClientMessage(Component.translatable("message.dusklights.linked_shift", Component.translatable(currentStateKey)), true);
-        } else {
-            removeAuxiliaryLight(level, pos);
-            player.displayClientMessage(Component.translatable("message.dusklights.unlinked"), true);
-        }
-
-        return true;
     }
 
     public static void tickServerLevel(ServerLevel level) {
@@ -94,11 +65,7 @@ public final class DuskLightsLogic {
         }
     }
 
-    public static void handleChunkLoad(ServerLevel level, ChunkPos chunkPos, boolean newlyGeneratedChunk) {
-        if (!newlyGeneratedChunk) {
-            return;
-        }
-
+    public static void handleChunkLoad(ServerLevel level, ChunkPos chunkPos) {
         LinkedLightsSavedData data = LinkedLightsSavedData.get(level);
         if (!data.markChunkScanned(chunkPos.toLong())) {
             return;
@@ -119,7 +86,7 @@ public final class DuskLightsLogic {
             }
         }
 
-        DuskLights.LOGGER.debug("Scanned newly generated chunk {} for natural linkable lights", chunkPos);
+        DuskLights.LOGGER.debug("Scanned chunk {} for natural linkable lights", chunkPos);
     }
 
     private static int calculateBrightness(Level level) {
@@ -183,12 +150,20 @@ public final class DuskLightsLogic {
     }
 
     private static void applyBrightness(ServerLevel level, BlockPos pos, BlockState state, int brightness) {
-        BlockState normalizedState = normalizeControllableTorchState(state);
-        BlockState updatedState = tryApplyLightLevel(normalizedState, brightness);
+        BlockState updatedState = tryApplyLightLevel(state, brightness);
 
         if (updatedState != state) {
             level.setBlock(pos, updatedState, Block.UPDATE_CLIENTS);
             return;
+        }
+
+        BlockState normalizedVanillaTorchState = normalizeVanillaTorchState(state);
+        if (normalizedVanillaTorchState != state) {
+            BlockState normalizedUpdatedState = tryApplyLightLevel(normalizedVanillaTorchState, brightness);
+            if (normalizedUpdatedState != normalizedVanillaTorchState) {
+                level.setBlock(pos, normalizedUpdatedState, Block.UPDATE_CLIENTS);
+                return;
+            }
         }
 
         BlockPos lightPos = pos.above();
@@ -204,9 +179,7 @@ public final class DuskLightsLogic {
             level.setBlock(lightPos, Blocks.LIGHT.defaultBlockState().setValue(LightBlock.LEVEL, brightness), Block.UPDATE_CLIENTS);
         }
     }
-
-
-    private static BlockState normalizeControllableTorchState(BlockState state) {
+    private static BlockState normalizeVanillaTorchState(BlockState state) {
         if (state.is(Blocks.TORCH)) {
             return Blocks.REDSTONE_TORCH.defaultBlockState();
         }
