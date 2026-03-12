@@ -6,5 +6,6 @@
   "message.dusklights.state_on": "currently ON",
   "message.dusklights.state_off": "currently OFF",
   "message.dusklights.unlinked": "Day/night sensor removed",
-  "item.dusklights.linked_torch": "Linked Torch"
+  "item.dusklights.linked_torch": "Day/Night Sensor Torch",
+  "item.dusklights.linked_lantern": "Day/Night Sensor Lantern"
 }
