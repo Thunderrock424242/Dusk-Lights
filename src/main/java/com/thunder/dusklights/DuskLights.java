@@ -7,6 +7,7 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.item.Item;
+import net.minecraft.world.item.Items;
 import net.minecraft.world.level.block.Blocks;
 import net.fabricmc.api.ModInitializer;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
@@ -20,8 +21,8 @@ public final class DuskLights implements ModInitializer {
 
     public static final Item LINKED_TORCH = registerItem("linked_torch",
             new LinkedTorchItem(
-                    Blocks.TORCH,
-                    Blocks.WALL_TORCH,
+                    Blocks.REDSTONE_TORCH,
+                    Blocks.REDSTONE_WALL_TORCH,
                     new Item.Properties()
                             .stacksTo(64)
             )
@@ -48,6 +49,10 @@ public final class DuskLights implements ModInitializer {
             }
 
             if (hand != InteractionHand.MAIN_HAND) {
+                return InteractionResult.PASS;
+            }
+
+            if (!player.getMainHandItem().is(Items.DAYLIGHT_DETECTOR)) {
                 return InteractionResult.PASS;
             }
 

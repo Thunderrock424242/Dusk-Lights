@@ -3,7 +3,7 @@
   "category": "misc",
   "ingredients": [
     {
-      "item": "minecraft:torch"
+      "item": "minecraft:redstone_torch"
     },
     {
       "item": "minecraft:daylight_detector"
