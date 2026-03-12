@@ -23,6 +23,7 @@ public final class DuskLightsLogic {
             new ResourceLocation(DuskLights.MOD_ID, "daylight_linkable"));
 
     private static final int UPDATE_INTERVAL_TICKS = 5;
+    private static final int DAY_LENGTH_TICKS = 24000;
 
     private DuskLightsLogic() {
     }
@@ -119,41 +120,52 @@ public final class DuskLightsLogic {
     private static int calculateBrightness(Level level) {
         DuskLightsConfig.Values config = DuskLightsConfig.get();
 
-        int timeOfDay = (int) (level.getDayTime() % 24000L);
+        int timeOfDay = Math.floorMod((int) level.getDayTime(), DAY_LENGTH_TICKS);
         int sunsetDurationTicks = minutesToTicks(config.sunsetRampMinutes);
         int sunriseDurationTicks = minutesToTicks(config.sunriseRampMinutes);
 
         int sunsetStart = config.sunsetStartTick;
-        int sunsetEnd = Math.min(23999, sunsetStart + sunsetDurationTicks);
+        int sunsetEnd = wrapTick(sunsetStart + sunsetDurationTicks);
 
         int sunriseStart = config.sunriseStartTick;
-        int sunriseEnd = Math.min(23999, sunriseStart + sunriseDurationTicks);
+        int sunriseEnd = wrapTick(sunriseStart + sunriseDurationTicks);
 
         float minAtSunset = config.sunsetMinimumBrightness / 15.0F;
         float brightness;
 
-        if (timeOfDay < sunsetStart || timeOfDay > sunriseEnd) {
+        if (!isWithinTimeWindow(timeOfDay, sunsetStart, sunriseEnd)) {
             brightness = 0.0F;
-        } else if (timeOfDay <= sunsetEnd) {
-            float progress = normalizedProgress(timeOfDay, sunsetStart, sunsetEnd);
+        } else if (isWithinTimeWindow(timeOfDay, sunsetStart, sunsetEnd)) {
+            float progress = normalizedProgress(timeOfDay, sunsetStart, sunsetDurationTicks);
             float eased = smoothstep(progress);
             brightness = minAtSunset + (1.0F - minAtSunset) * eased;
-        } else if (timeOfDay < sunriseStart) {
-            brightness = 1.0F;
-        } else {
-            float progress = normalizedProgress(timeOfDay, sunriseStart, sunriseEnd);
+        } else if (isWithinTimeWindow(timeOfDay, sunriseStart, sunriseEnd)) {
+            float progress = normalizedProgress(timeOfDay, sunriseStart, sunriseDurationTicks);
             float eased = smoothstep(progress);
             brightness = 1.0F - eased;
+        } else {
+            brightness = 1.0F;
         }
 
         return Math.max(0, Math.min(15, Math.round(brightness * 15.0F)));
     }
 
-    private static float normalizedProgress(int value, int start, int end) {
-        if (end <= start) {
-            return 1.0F;
+    private static boolean isWithinTimeWindow(int value, int start, int end) {
+        if (start <= end) {
+            return value >= start && value <= end;
         }
-        return Math.max(0.0F, Math.min(1.0F, (value - start) / (float) (end - start)));
+
+        return value >= start || value <= end;
+    }
+
+    private static int wrapTick(int tick) {
+        return Math.floorMod(tick, DAY_LENGTH_TICKS);
+    }
+
+    private static float normalizedProgress(int value, int start, int durationTicks) {
+        int clampedDuration = Math.max(1, Math.min(durationTicks, DAY_LENGTH_TICKS - 1));
+        int elapsed = Math.floorMod(value - start, DAY_LENGTH_TICKS);
+        return Math.max(0.0F, Math.min(1.0F, elapsed / (float) clampedDuration));
     }
 
     private static int minutesToTicks(double minutes) {

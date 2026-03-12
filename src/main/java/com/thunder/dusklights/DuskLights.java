@@ -4,6 +4,7 @@ import net.minecraft.core.Registry;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.level.block.Blocks;
@@ -43,6 +44,10 @@ public final class DuskLights implements ModInitializer {
 
         UseBlockCallback.EVENT.register((player, level, hand, hitResult) -> {
             if (!(level instanceof ServerLevel serverLevel)) {
+                return InteractionResult.PASS;
+            }
+
+            if (hand != InteractionHand.MAIN_HAND) {
                 return InteractionResult.PASS;
             }
 
