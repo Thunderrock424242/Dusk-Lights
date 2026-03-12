@@ -69,3 +69,19 @@ DuskLights will attempt one of these defaults:
 3. Place/remove an invisible `minecraft:light` block above the source block.
 
 For many simple light blocks, only adding the block tag is enough.
+
+
+## Auto-link behavior for modded items
+
+DuskLights performs a runtime discovery pass over loaded mod blocks and auto-links likely light blocks when players place the normal block item.
+You can still explicitly opt in with `dusklights:daylight_linkable` for guaranteed behavior.
+This means you usually do not need a separate `linked_*` item for compat.
+
+If DuskLights cannot control a tagged block (for example, no compatible state property and helper light placement is blocked),
+it logs a compat error that includes the owning mod id and asks users to report it to that mod.
+
+
+### Config toggle
+
+Server owners can disable runtime discovery via `config/dusklights.json` by setting `autoCompatDiscovery` to `false` (default is `true`).
+When disabled, only explicitly tagged blocks and existing compat handlers are used.

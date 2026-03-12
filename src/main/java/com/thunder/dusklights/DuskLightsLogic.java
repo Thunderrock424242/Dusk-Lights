@@ -3,6 +3,7 @@ package com.thunder.dusklights;
 import com.thunder.dusklights.api.DuskLightsCompatApi;
 
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
@@ -18,6 +19,8 @@ import net.minecraft.world.level.block.state.properties.IntegerProperty;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 
 public final class DuskLightsLogic {
     private static final TagKey<Block> DAYLIGHT_LINKABLE = TagKey.create(Registries.BLOCK,
@@ -26,6 +29,7 @@ public final class DuskLightsLogic {
     private static final int UPDATE_INTERVAL_TICKS = 5;
     private static final int DAY_LENGTH_TICKS = 24000;
     private static final int CHUNK_SCANS_PER_TICK = 1;
+    private static final Set<ResourceLocation> LOGGED_COMPAT_FAILURE_BLOCKS = ConcurrentHashMap.newKeySet();
 
     private DuskLightsLogic() {
     }
@@ -56,7 +60,7 @@ public final class DuskLightsLogic {
             }
 
             BlockState state = level.getBlockState(pos);
-            if (!state.is(DAYLIGHT_LINKABLE)) {
+            if (!isLinkableState(state)) {
                 stalePositions.add(pos);
                 removeAuxiliaryLight(level, pos);
                 continue;
@@ -108,12 +112,17 @@ public final class DuskLightsLogic {
             for (int z = chunkPos.getMinBlockZ(); z <= chunkPos.getMaxBlockZ(); z++) {
                 for (int y = minY; y < maxY; y++) {
                     cursor.set(x, y, z);
-                    if (level.getBlockState(cursor).is(DAYLIGHT_LINKABLE)) {
+                    if (isLinkableState(level.getBlockState(cursor))) {
                         data.addLinked(cursor.immutable());
                     }
                 }
             }
         }
+    }
+
+
+    static boolean isLinkableState(BlockState state) {
+        return state.is(DAYLIGHT_LINKABLE) || AutoCompatDiscovery.isDiscoveredLinkable(state);
     }
 
     private static int calculateBrightness(Level level) {
@@ -177,6 +186,10 @@ public final class DuskLightsLogic {
     }
 
     private static void applyBrightness(ServerLevel level, BlockPos pos, BlockState state, int brightness) {
+        if (DuskLightsCompatApi.applyRegisteredHandlers(level, pos, state, brightness)) {
+            return;
+        }
+
         BlockState updatedState = tryApplyLightLevel(state, brightness);
 
         if (updatedState != state) {
@@ -204,7 +217,10 @@ public final class DuskLightsLogic {
         BlockState lightState = level.getBlockState(lightPos);
         if (lightState.isAir() || lightState.is(Blocks.LIGHT)) {
             level.setBlock(lightPos, Blocks.LIGHT.defaultBlockState().setValue(LightBlock.LEVEL, brightness), Block.UPDATE_CLIENTS);
+            return;
         }
+
+        logCompatFailure(state, pos, "Unable to apply brightness with fallback (blocked helper light position). Report to the owning mod for compatibility support.");
     }
 
     private static BlockState normalizeVanillaTorchState(BlockState state) {
@@ -240,6 +256,17 @@ public final class DuskLightsLogic {
         }
 
         return state;
+    }
+
+
+    private static void logCompatFailure(BlockState state, BlockPos pos, String reason) {
+        ResourceLocation blockId = BuiltInRegistries.BLOCK.getKey(state.getBlock());
+        if (blockId == null || !LOGGED_COMPAT_FAILURE_BLOCKS.add(blockId)) {
+            return;
+        }
+
+        DuskLights.LOGGER.error("[Compat] {} Block={} at {}. This is not a DuskLights fault; report it to mod '{}'.",
+                reason, blockId, pos, blockId.getNamespace());
     }
 
     private static void removeAuxiliaryLight(ServerLevel level, BlockPos sourcePos) {

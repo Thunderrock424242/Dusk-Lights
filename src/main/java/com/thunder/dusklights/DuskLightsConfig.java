@@ -70,6 +70,8 @@ public final class DuskLightsConfig {
         public int sunriseStartTick = 23000;
         public double sunriseRampMinutes = 1.0;
 
+        public boolean autoCompatDiscovery = true;
+
         private void sanitize() {
             sunsetStartTick = clamp(sunsetStartTick, 0, 23999);
             sunriseStartTick = clamp(sunriseStartTick, 0, 23999);
