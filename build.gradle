@@ -1,5 +1,5 @@
 plugins {
-    id 'net.fabricmc.fabric-loom-remap' version "1.15"
+    id 'fabric-loom' version "${loom_version}"
     id 'maven-publish'
 }
 
@@ -28,12 +28,6 @@ loom {
         }
     }
 
-}
-
-fabricApi {
-    configureDataGeneration {
-        client = true
-    }
 }
 
 dependencies {
