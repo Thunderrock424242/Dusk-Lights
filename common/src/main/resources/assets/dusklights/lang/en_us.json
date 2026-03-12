@@ -1,3 +1,6 @@
 {
-  "modmenu.nameTranslation.dusklights": "Dusk Lights"
+  "modmenu.nameTranslation.dusklights": "Dusk Lights",
+  "dusklights.description": "Immersive day-night linked lighting for torches, lanterns, and compatible modded lights.",
+  "message.dusklights.linked": "Linked to the day/night cycle",
+  "message.dusklights.unlinked": "Removed day/night link"
 }

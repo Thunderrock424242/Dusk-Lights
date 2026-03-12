@@ -1,10 +1,23 @@
 # Dusk Lights (Multiloader)
 
-This repository is now set up as a **multiloader Minecraft mod project** targeting:
+DuskLights adds immersive, automated lighting to Minecraft while keeping a vanilla look.
 
-- **Fabric** (`/fabric`)
-- **Forge** (`/forge`)
-- Shared code in **Common** (`/common`)
+## Core gameplay concept
+
+- Right-click a placed light source with a **Daylight Sensor** (`minecraft:daylight_detector`) to link it to the day/night cycle.
+- Linked lights should not hard-toggle instantly: they should transition in and out smoothly around dusk and dawn for a softer atmosphere.
+- Villages and naturally generated buildings that spawn with torches/lanterns should be considered auto-linked by default.
+- Player-built structures require intentional setup:
+  - either right-click placed lights with a Daylight Sensor,
+  - or craft a "sensor-linked" version of the light from the original light + Daylight Sensor.
+- The system is intended to be data-driven so it can support **modded light blocks** (not only vanilla torches/lanterns).
+
+## Design goals
+
+- Preserve vanilla aesthetics.
+- Make settlements feel alive at sunset/sunrise.
+- Reduce manual light management for roads, villages, and bases.
+- Keep compatibility broad by relying on tags/properties instead of hard-coded block lists where possible.
 
 ## Project layout
 
