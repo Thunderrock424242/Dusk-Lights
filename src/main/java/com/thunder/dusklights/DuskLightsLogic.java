@@ -13,6 +13,7 @@ import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.LightBlock;
 import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.block.state.properties.BooleanProperty;
 import net.minecraft.world.level.block.state.properties.IntegerProperty;
 
 import java.util.ArrayList;
@@ -46,7 +47,11 @@ public final class DuskLightsLogic {
         boolean linked = data.toggleLinked(pos.immutable());
 
         if (linked) {
-            player.displayClientMessage(Component.translatable("message.dusklights.linked_shift"), true);
+            int currentBrightness = calculateBrightness(level);
+            String currentStateKey = currentBrightness > 0
+                    ? "message.dusklights.state_on"
+                    : "message.dusklights.state_off";
+            player.displayClientMessage(Component.translatable("message.dusklights.linked_shift", Component.translatable(currentStateKey)), true);
         } else {
             removeAuxiliaryLight(level, pos);
             player.displayClientMessage(Component.translatable("message.dusklights.unlinked"), true);
@@ -178,7 +183,8 @@ public final class DuskLightsLogic {
     }
 
     private static void applyBrightness(ServerLevel level, BlockPos pos, BlockState state, int brightness) {
-        BlockState updatedState = tryApplyLightLevel(state, brightness);
+        BlockState normalizedState = normalizeControllableTorchState(state);
+        BlockState updatedState = tryApplyLightLevel(normalizedState, brightness);
 
         if (updatedState != state) {
             level.setBlock(pos, updatedState, Block.UPDATE_CLIENTS);
@@ -199,20 +205,37 @@ public final class DuskLightsLogic {
         }
     }
 
+
+    private static BlockState normalizeControllableTorchState(BlockState state) {
+        if (state.is(Blocks.TORCH)) {
+            return Blocks.REDSTONE_TORCH.defaultBlockState();
+        }
+
+        if (state.is(Blocks.WALL_TORCH)) {
+            return Blocks.REDSTONE_WALL_TORCH.defaultBlockState()
+                    .setValue(net.minecraft.world.level.block.RedstoneWallTorchBlock.FACING,
+                            state.getValue(net.minecraft.world.level.block.WallTorchBlock.FACING));
+        }
+
+        return state;
+    }
+
     private static BlockState tryApplyLightLevel(BlockState state, int brightness) {
         for (var property : state.getProperties()) {
-            if (!(property instanceof IntegerProperty integerProperty)) {
-                continue;
+            if (property instanceof IntegerProperty integerProperty) {
+                String name = integerProperty.getName();
+                if (!(name.contains("light") || name.contains("level") || name.contains("power"))) {
+                    continue;
+                }
+
+                int min = integerProperty.getPossibleValues().stream().min(Integer::compareTo).orElse(0);
+                int max = integerProperty.getPossibleValues().stream().max(Integer::compareTo).orElse(15);
+                return state.setValue(integerProperty, Math.max(min, Math.min(max, brightness)));
             }
 
-            String name = integerProperty.getName();
-            if (!(name.contains("light") || name.contains("level") || name.contains("power"))) {
-                continue;
+            if (property instanceof BooleanProperty booleanProperty && "lit".equals(booleanProperty.getName())) {
+                return state.setValue(booleanProperty, brightness > 0);
             }
-
-            int min = integerProperty.getPossibleValues().stream().min(Integer::compareTo).orElse(0);
-            int max = integerProperty.getPossibleValues().stream().max(Integer::compareTo).orElse(15);
-            return state.setValue(integerProperty, Math.max(min, Math.min(max, brightness)));
         }
 
         return state;
