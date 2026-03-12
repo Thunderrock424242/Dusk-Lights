@@ -4,13 +4,21 @@ DuskLights adds immersive, automated lighting to Minecraft while keeping a vanil
 
 ## Core gameplay concept
 
-- Right-click a placed light source with a **Daylight Sensor** (`minecraft:daylight_detector`) to link it to the day/night cycle.
-- Linked lights should not hard-toggle instantly: they should transition in and out smoothly around dusk and dawn for a softer atmosphere.
-- Villages and naturally generated buildings that spawn with torches/lanterns should be considered auto-linked by default.
-- Player-built structures require intentional setup:
-  - either right-click placed lights with a Daylight Sensor,
-  - or craft a sensor-linked copy (`Linked Torch`: `Torch + Daylight Sensor`).
+- Craft a **Day/Night Sensor** copy of a vanilla light source for player builds:
+  - **Day/Night Sensor Torch** = `Torch + Daylight Detector`
+  - **Day/Night Sensor Lantern** = `Lantern + Daylight Detector`
+- Place those sensor items to create lights that are automatically linked to the day/night cycle.
+- Linked lights transition smoothly around dusk and dawn instead of hard toggling.
+- Naturally generated structures are auto-linked when chunks are generated.
 - The system is data-driven so modded light blocks can opt in via `dusklights:daylight_linkable`.
+
+## How it works
+
+- The mod tracks linked block positions in world saved data.
+- Every few ticks, linked lights are updated based on time-of-day brightness from config.
+- For blocks with compatible state properties (`lit`, `light`/`level`/`power`), brightness is applied directly.
+- For vanilla torches, a normalization fallback is used.
+- For non-directly-controllable blocks, an invisible `minecraft:light` helper block above the source provides brightness.
 
 ## Project layout
 
@@ -28,4 +36,4 @@ From the repository root:
 
 ## Configuration
 
-Project and mod metadata (version, mod id, loader versions, etc.) is configured in `gradle.properties`.
+Runtime light timing is configured in `config/dusklights.json`.

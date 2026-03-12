@@ -1,10 +1,6 @@
 {
   "modmenu.nameTranslation.dusklights": "Dusk Lights",
   "dusklights.description": "Immersive day-night linked lighting for torches, lanterns, and compatible modded lights.",
-  "message.dusklights.linked": "Linked to the day/night cycle",
-  "message.dusklights.linked_shift": "Linked to day/night sensor (%s)",
-  "message.dusklights.state_on": "currently ON",
-  "message.dusklights.state_off": "currently OFF",
-  "message.dusklights.unlinked": "Day/night sensor removed",
-  "item.dusklights.linked_torch": "Linked Torch"
+  "item.dusklights.linked_torch": "Day/Night Sensor Torch",
+  "item.dusklights.linked_lantern": "Day/Night Sensor Lantern"
 }

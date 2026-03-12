@@ -1,17 +1,13 @@
 package com.thunder.dusklights;
 
+import net.fabricmc.api.ModInitializer;
+import net.fabricmc.fabric.api.event.lifecycle.v1.ServerChunkEvents;
+import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
 import net.minecraft.core.Registry;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.ResourceLocation;
-import net.minecraft.server.level.ServerLevel;
-import net.minecraft.world.InteractionHand;
-import net.minecraft.world.InteractionResult;
 import net.minecraft.world.item.Item;
-import net.minecraft.world.item.Items;
 import net.minecraft.world.level.block.Blocks;
-import net.fabricmc.api.ModInitializer;
-import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
-import net.fabricmc.fabric.api.event.player.UseBlockCallback;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -21,8 +17,16 @@ public final class DuskLights implements ModInitializer {
 
     public static final Item LINKED_TORCH = registerItem("linked_torch",
             new LinkedTorchItem(
-                    Blocks.REDSTONE_TORCH,
-                    Blocks.REDSTONE_WALL_TORCH,
+                    Blocks.TORCH,
+                    Blocks.WALL_TORCH,
+                    new Item.Properties()
+                            .stacksTo(64)
+            )
+    );
+
+    public static final Item LINKED_LANTERN = registerItem("linked_lantern",
+            new LinkedLanternItem(
+                    Blocks.LANTERN,
                     new Item.Properties()
                             .stacksTo(64)
             )
@@ -43,27 +47,8 @@ public final class DuskLights implements ModInitializer {
         LOGGER.info("Loaded dusk config: sunsetStartTick={}, sunsetRampMinutes={}, sunriseStartTick={}, sunriseRampMinutes={}",
                 config.sunsetStartTick, config.sunsetRampMinutes, config.sunriseStartTick, config.sunriseRampMinutes);
 
-        UseBlockCallback.EVENT.register((player, level, hand, hitResult) -> {
-            if (!(level instanceof ServerLevel serverLevel)) {
-                return InteractionResult.PASS;
-            }
-
-            if (hand != InteractionHand.MAIN_HAND) {
-                return InteractionResult.PASS;
-            }
-
-            if (!player.getMainHandItem().is(Items.DAYLIGHT_DETECTOR)) {
-                return InteractionResult.PASS;
-            }
-
-            if (!DuskLightsLogic.handleLightLinkUse(serverLevel, player, hitResult.getBlockPos())) {
-                return InteractionResult.PASS;
-            }
-
-            return InteractionResult.SUCCESS;
-        });
-
         ServerTickEvents.END_WORLD_TICK.register(DuskLightsLogic::tickServerLevel);
+        ServerChunkEvents.CHUNK_LOAD.register((level, chunk) -> DuskLightsLogic.handleChunkLoad(level, chunk.getPos()));
     }
 
     @Override
