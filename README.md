@@ -26,6 +26,11 @@ DuskLights adds immersive, automated lighting to Minecraft while keeping a vanil
 - `src/main/resources` - Fabric metadata, assets, recipes, and tags.
 - Compatibility API docs for mod developers: `docs/MOD_COMPAT_API.md`.
 
+## Natural structure light linking
+
+Natural lights (like torches/lanterns in generated structures) are discovered dynamically.
+When a chunk loads, DuskLights queues it for scanning and processes scans gradually during server ticks to avoid heavy world-join spikes.
+
 ## Useful Gradle tasks
 
 From the repository root:

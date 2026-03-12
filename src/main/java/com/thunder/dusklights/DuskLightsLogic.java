@@ -25,6 +25,7 @@ public final class DuskLightsLogic {
 
     private static final int UPDATE_INTERVAL_TICKS = 5;
     private static final int DAY_LENGTH_TICKS = 24000;
+    private static final int CHUNK_SCANS_PER_TICK = 1;
 
     private DuskLightsLogic() {
     }
@@ -34,11 +35,13 @@ public final class DuskLightsLogic {
     }
 
     public static void tickServerLevel(ServerLevel level) {
+        LinkedLightsSavedData data = LinkedLightsSavedData.get(level);
+        processPendingChunkScans(level, data);
+
         if (level.getGameTime() % UPDATE_INTERVAL_TICKS != 0) {
             return;
         }
 
-        LinkedLightsSavedData data = LinkedLightsSavedData.get(level);
         if (data.getLinkedLightPositions().isEmpty()) {
             return;
         }
@@ -69,10 +72,34 @@ public final class DuskLightsLogic {
 
     public static void handleChunkLoad(ServerLevel level, ChunkPos chunkPos) {
         LinkedLightsSavedData data = LinkedLightsSavedData.get(level);
-        if (!data.markChunkScanned(chunkPos.toLong())) {
-            return;
-        }
+        data.queueChunkScan(chunkPos.toLong());
+    }
 
+    private static void processPendingChunkScans(ServerLevel level, LinkedLightsSavedData data) {
+        for (int i = 0; i < CHUNK_SCANS_PER_TICK; i++) {
+            Long packedChunkPos = data.pollPendingChunkScan();
+            if (packedChunkPos == null) {
+                return;
+            }
+
+            if (data.isChunkScanned(packedChunkPos)) {
+                continue;
+            }
+
+            ChunkPos chunkPos = new ChunkPos(packedChunkPos);
+            BlockPos chunkOrigin = new BlockPos(chunkPos.getMinBlockX(), level.getMinBuildHeight(), chunkPos.getMinBlockZ());
+            if (!level.isLoaded(chunkOrigin)) {
+                data.queueChunkScan(packedChunkPos);
+                continue;
+            }
+
+            scanChunkForNaturalLinkableLights(level, chunkPos, data);
+            data.markChunkScanned(packedChunkPos);
+            DuskLights.LOGGER.debug("Scanned chunk {} for natural linkable lights", chunkPos);
+        }
+    }
+
+    private static void scanChunkForNaturalLinkableLights(ServerLevel level, ChunkPos chunkPos, LinkedLightsSavedData data) {
         BlockPos.MutableBlockPos cursor = new BlockPos.MutableBlockPos();
         int minY = level.getMinBuildHeight();
         int maxY = level.getMaxBuildHeight();
@@ -87,8 +114,6 @@ public final class DuskLightsLogic {
                 }
             }
         }
-
-        DuskLights.LOGGER.debug("Scanned chunk {} for natural linkable lights", chunkPos);
     }
 
     private static int calculateBrightness(Level level) {
@@ -181,6 +206,7 @@ public final class DuskLightsLogic {
             level.setBlock(lightPos, Blocks.LIGHT.defaultBlockState().setValue(LightBlock.LEVEL, brightness), Block.UPDATE_CLIENTS);
         }
     }
+
     private static BlockState normalizeVanillaTorchState(BlockState state) {
         if (state.is(Blocks.TORCH)) {
             return Blocks.REDSTONE_TORCH.defaultBlockState();

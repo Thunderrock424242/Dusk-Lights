@@ -8,6 +8,7 @@ import net.minecraft.nbt.Tag;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.saveddata.SavedData;
 
+import java.util.ArrayDeque;
 import java.util.HashSet;
 import java.util.Set;
 
@@ -15,9 +16,12 @@ public final class LinkedLightsSavedData extends SavedData {
     private static final String DATA_NAME = DuskLights.MOD_ID + "_linked_lights";
     private static final String LINKED_LIGHTS_KEY = "linked_lights";
     private static final String SCANNED_CHUNKS_KEY = "scanned_chunks";
+    private static final String PENDING_CHUNK_SCANS_KEY = "pending_chunk_scans";
 
     private final Set<Long> linkedLightPositions = new HashSet<>();
     private final Set<Long> scannedChunks = new HashSet<>();
+    private final ArrayDeque<Long> pendingChunkScans = new ArrayDeque<>();
+    private final Set<Long> pendingChunkScanSet = new HashSet<>();
 
     public static LinkedLightsSavedData get(ServerLevel level) {
         return level.getDataStorage().computeIfAbsent(LinkedLightsSavedData::load, LinkedLightsSavedData::new, DATA_NAME);
@@ -36,6 +40,13 @@ public final class LinkedLightsSavedData extends SavedData {
             data.scannedChunks.add(((LongTag) entry).getAsLong());
         }
 
+        ListTag pendingScans = tag.getList(PENDING_CHUNK_SCANS_KEY, Tag.TAG_LONG);
+        for (Tag entry : pendingScans) {
+            long packedChunkPos = ((LongTag) entry).getAsLong();
+            data.pendingChunkScans.addLast(packedChunkPos);
+            data.pendingChunkScanSet.add(packedChunkPos);
+        }
+
         return data;
     }
 
@@ -52,6 +63,12 @@ public final class LinkedLightsSavedData extends SavedData {
             chunks.add(LongTag.valueOf(packedChunkPos));
         }
         tag.put(SCANNED_CHUNKS_KEY, chunks);
+
+        ListTag pendingScans = new ListTag();
+        for (Long packedChunkPos : pendingChunkScans) {
+            pendingScans.add(LongTag.valueOf(packedChunkPos));
+        }
+        tag.put(PENDING_CHUNK_SCANS_KEY, pendingScans);
 
         return tag;
     }
@@ -94,11 +111,33 @@ public final class LinkedLightsSavedData extends SavedData {
         return linkedLightPositions;
     }
 
-    public boolean markChunkScanned(long packedChunkPos) {
-        boolean added = scannedChunks.add(packedChunkPos);
-        if (added) {
+    public boolean queueChunkScan(long packedChunkPos) {
+        if (scannedChunks.contains(packedChunkPos) || pendingChunkScanSet.contains(packedChunkPos)) {
+            return false;
+        }
+
+        pendingChunkScans.addLast(packedChunkPos);
+        pendingChunkScanSet.add(packedChunkPos);
+        setDirty();
+        return true;
+    }
+
+    public Long pollPendingChunkScan() {
+        Long packedChunkPos = pendingChunkScans.pollFirst();
+        if (packedChunkPos != null) {
+            pendingChunkScanSet.remove(packedChunkPos);
             setDirty();
         }
-        return added;
+        return packedChunkPos;
+    }
+
+    public boolean isChunkScanned(long packedChunkPos) {
+        return scannedChunks.contains(packedChunkPos);
+    }
+
+    public void markChunkScanned(long packedChunkPos) {
+        if (scannedChunks.add(packedChunkPos)) {
+            setDirty();
+        }
     }
 }
