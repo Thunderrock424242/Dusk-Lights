@@ -5,10 +5,11 @@ import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.level.block.Blocks;
+import net.fabricmc.api.ModInitializer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public final class DuskLights {
+public final class DuskLights implements ModInitializer {
     public static final String MOD_ID = "dusklights";
     public static final Logger LOGGER = LoggerFactory.getLogger(MOD_ID);
 
@@ -23,7 +24,7 @@ public final class DuskLights {
 
     private static boolean initialized;
 
-    private DuskLights() {
+    public DuskLights() {
     }
 
     public static void init() {
@@ -32,6 +33,11 @@ public final class DuskLights {
         }
         initialized = true;
         LOGGER.info("Initializing {}", MOD_ID);
+    }
+
+    @Override
+    public void onInitialize() {
+        init();
     }
 
     private static Item registerItem(String path, Item item) {
