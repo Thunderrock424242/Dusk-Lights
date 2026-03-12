@@ -3,6 +3,7 @@ package com.thunder.dusklights;
 import net.fabricmc.api.ModInitializer;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerChunkEvents;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
+import net.fabricmc.fabric.api.event.player.UseBlockCallback;
 import net.minecraft.core.Registry;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.ResourceLocation;
@@ -44,10 +45,43 @@ public final class DuskLights implements ModInitializer {
         initialized = true;
         LOGGER.info("Initializing {}", MOD_ID);
         DuskLightsConfig.Values config = DuskLightsConfig.get();
-        LOGGER.info("Loaded dusk config: sunsetStartTick={}, sunsetRampMinutes={}, sunriseStartTick={}, sunriseRampMinutes={}",
-                config.sunsetStartTick, config.sunsetRampMinutes, config.sunriseStartTick, config.sunriseRampMinutes);
+        LOGGER.info("Loaded dusk config: sunsetStartTick={}, sunsetRampMinutes={}, sunriseStartTick={}, sunriseRampMinutes={}, autoCompatDiscovery={}",
+                config.sunsetStartTick, config.sunsetRampMinutes, config.sunriseStartTick, config.sunriseRampMinutes, config.autoCompatDiscovery);
+
+        if (config.autoCompatDiscovery) {
+            AutoCompatDiscovery.discoverModdedLights();
+        } else {
+            LOGGER.info("Auto compat discovery is disabled by config.");
+        }
 
         ServerTickEvents.END_WORLD_TICK.register(DuskLightsLogic::tickServerLevel);
+        UseBlockCallback.EVENT.register((player, world, hand, hitResult) -> {
+            if (world.isClientSide()) {
+                return net.minecraft.world.InteractionResult.PASS;
+            }
+
+            if (!(world instanceof net.minecraft.server.level.ServerLevel serverLevel)) {
+                return net.minecraft.world.InteractionResult.PASS;
+            }
+
+            net.minecraft.world.item.ItemStack held = player.getItemInHand(hand);
+            if (!(held.getItem() instanceof net.minecraft.world.item.BlockItem blockItem)) {
+                return net.minecraft.world.InteractionResult.PASS;
+            }
+
+            if (!DuskLightsLogic.isLinkableState(blockItem.getBlock().defaultBlockState())) {
+                return net.minecraft.world.InteractionResult.PASS;
+            }
+
+            net.minecraft.world.item.context.UseOnContext useOnContext = new net.minecraft.world.item.context.UseOnContext(player, hand, hitResult);
+            net.minecraft.world.item.context.BlockPlaceContext placeContext = new net.minecraft.world.item.context.BlockPlaceContext(useOnContext);
+            net.minecraft.core.BlockPos placedPos = placeContext.replacingClickedOnBlock()
+                    ? placeContext.getClickedPos()
+                    : placeContext.getClickedPos().relative(placeContext.getClickedFace());
+
+            LinkedLightsSavedData.get(serverLevel).addLinked(placedPos.immutable());
+            return net.minecraft.world.InteractionResult.PASS;
+        });
         ServerChunkEvents.CHUNK_LOAD.register((level, chunk) -> DuskLightsLogic.handleChunkLoad(level, chunk.getPos()));
     }
 

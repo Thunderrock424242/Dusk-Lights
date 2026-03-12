@@ -11,6 +11,7 @@ DuskLights adds immersive, automated lighting to Minecraft while keeping a vanil
 - Linked lights transition smoothly around dusk and dawn instead of hard toggling.
 - Naturally generated structures are auto-linked when chunks are generated.
 - The system is data-driven so modded light blocks can opt in via `dusklights:daylight_linkable`.
+- Modded lights are runtime-discovered and normal placed items are auto-linked (no custom linked item required in most cases).
 
 ## How it works
 
@@ -37,3 +38,5 @@ From the repository root:
 ## Configuration
 
 Runtime light timing is configured in `config/dusklights.json`.
+
+Set `autoCompatDiscovery` (default `true`) to enable/disable runtime scanning of modded lights for auto-compat linking.
