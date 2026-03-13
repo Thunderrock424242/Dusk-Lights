@@ -5,8 +5,6 @@
     "minecraft:wall_torch",
     "minecraft:redstone_torch",
     "minecraft:redstone_wall_torch",
-    "minecraft:lantern",
-    "dusklights:linked_torch",
-    "dusklights:linked_wall_torch"
+    "minecraft:lantern"
   ]
 }

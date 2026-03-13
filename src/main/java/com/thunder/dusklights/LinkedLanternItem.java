@@ -27,7 +27,8 @@ public final class LinkedLanternItem extends BlockItem {
                 ? context.getClickedPos()
                 : context.getClickedPos().relative(context.getClickedFace());
 
-        if (serverLevel.getBlockState(placedPos).is(DuskLightsLogic.daylightLinkableTag())) {
+        if (DuskLightsConfig.get().defaultSensorEnabled
+                && serverLevel.getBlockState(placedPos).is(DuskLightsLogic.daylightLinkableTag())) {
             LinkedLightsSavedData.get(serverLevel).addLinked(placedPos.immutable());
         }
 

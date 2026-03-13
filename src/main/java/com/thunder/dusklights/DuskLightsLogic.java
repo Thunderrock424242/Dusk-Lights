@@ -81,6 +81,10 @@ public final class DuskLightsLogic {
     }
 
     private static void processPendingChunkScans(ServerLevel level, LinkedLightsSavedData data) {
+        if (!DuskLightsConfig.get().defaultSensorEnabled) {
+            return;
+        }
+
         for (int i = 0; i < CHUNK_SCANS_PER_TICK; i++) {
             Long packedChunkPos = data.pollPendingChunkScan();
             if (packedChunkPos == null) {
@@ -300,6 +304,11 @@ public final class DuskLightsLogic {
 
         DuskLights.LOGGER.error("[Compat] {} Block={} at {}. This is not a DuskLights fault; report it to mod '{}'.",
                 reason, blockId, pos, blockId.getNamespace());
+    }
+
+
+    public static void removeAuxiliaryLightForSource(ServerLevel level, BlockPos sourcePos) {
+        removeAuxiliaryLight(level, sourcePos);
     }
 
     private static void removeAuxiliaryLight(ServerLevel level, BlockPos sourcePos) {

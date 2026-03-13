@@ -73,6 +73,7 @@ public final class DuskLightsConfig {
         public double sunriseRampMinutes = 1.0;
 
         public boolean autoCompatDiscovery = true;
+        public boolean defaultSensorEnabled = true;
         public List<String> manualCompatBlockIds = new ArrayList<>();
 
         private void sanitize() {

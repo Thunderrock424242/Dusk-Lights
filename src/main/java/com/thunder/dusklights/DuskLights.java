@@ -1,50 +1,29 @@
 package com.thunder.dusklights;
 
 import net.fabricmc.api.ModInitializer;
-import net.fabricmc.fabric.api.itemgroup.v1.ItemGroupEvents;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerChunkEvents;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
 import net.fabricmc.fabric.api.event.player.UseBlockCallback;
+import net.fabricmc.fabric.api.itemgroup.v1.ItemGroupEvents;
 import net.minecraft.core.Registry;
 import net.minecraft.core.registries.BuiltInRegistries;
-import net.minecraft.core.particles.ParticleTypes;
+import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.world.InteractionResult;
+import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.item.CreativeModeTabs;
 import net.minecraft.world.item.Item;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.context.BlockPlaceContext;
+import net.minecraft.world.item.context.UseOnContext;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
-import net.minecraft.world.level.block.TorchBlock;
-import net.minecraft.world.level.block.WallTorchBlock;
-import net.minecraft.world.level.block.state.BlockBehaviour;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public final class DuskLights implements ModInitializer {
     public static final String MOD_ID = "dusklights";
     public static final Logger LOGGER = LoggerFactory.getLogger(MOD_ID);
-
-    public static final Block LINKED_TORCH_BLOCK = registerBlock("linked_torch",
-            new TorchBlock(
-                    BlockBehaviour.Properties.copy(Blocks.TORCH),
-                    ParticleTypes.FLAME
-            )
-    );
-
-    public static final Block LINKED_WALL_TORCH_BLOCK = registerBlock("linked_wall_torch",
-            new WallTorchBlock(
-                    BlockBehaviour.Properties.copy(Blocks.WALL_TORCH),
-                    ParticleTypes.FLAME
-            )
-    );
-
-    public static final Item LINKED_TORCH = registerItem("linked_torch",
-            new LinkedTorchItem(
-                    LINKED_TORCH_BLOCK,
-                    LINKED_WALL_TORCH_BLOCK,
-                    new Item.Properties()
-                            .stacksTo(64)
-            )
-    );
 
     public static final Item LINKED_LANTERN = registerItem("linked_lantern",
             new LinkedLanternItem(
@@ -66,9 +45,9 @@ public final class DuskLights implements ModInitializer {
         initialized = true;
         LOGGER.info("Initializing {}", MOD_ID);
         DuskLightsConfig.Values config = DuskLightsConfig.get();
-        LOGGER.info("Loaded dusk config: sunsetStartTick={}, sunsetRampMinutes={}, sunriseStartTick={}, sunriseRampMinutes={}, autoCompatDiscovery={}, manualCompatBlockIds={}",
+        LOGGER.info("Loaded dusk config: sunsetStartTick={}, sunsetRampMinutes={}, sunriseStartTick={}, sunriseRampMinutes={}, autoCompatDiscovery={}, defaultSensorEnabled={}, manualCompatBlockIds={}",
                 config.sunsetStartTick, config.sunsetRampMinutes, config.sunriseStartTick, config.sunriseRampMinutes,
-                config.autoCompatDiscovery, config.manualCompatBlockIds.size());
+                config.autoCompatDiscovery, config.defaultSensorEnabled, config.manualCompatBlockIds.size());
 
         AutoCompatDiscovery.registerConfiguredLinkableBlocks(config.manualCompatBlockIds);
 
@@ -83,30 +62,53 @@ public final class DuskLights implements ModInitializer {
         ServerTickEvents.END_WORLD_TICK.register(DuskLightsLogic::tickServerLevel);
         UseBlockCallback.EVENT.register((player, world, hand, hitResult) -> {
             if (world.isClientSide()) {
-                return net.minecraft.world.InteractionResult.PASS;
+                return InteractionResult.PASS;
             }
 
             if (!(world instanceof net.minecraft.server.level.ServerLevel serverLevel)) {
-                return net.minecraft.world.InteractionResult.PASS;
+                return InteractionResult.PASS;
             }
 
-            net.minecraft.world.item.ItemStack held = player.getItemInHand(hand);
-            if (!(held.getItem() instanceof net.minecraft.world.item.BlockItem blockItem)) {
-                return net.minecraft.world.InteractionResult.PASS;
+            ItemStack held = player.getItemInHand(hand);
+            net.minecraft.core.BlockPos clickedPos = hitResult.getBlockPos();
+
+            if (held.isEmpty()) {
+                net.minecraft.world.level.block.state.BlockState clickedState = serverLevel.getBlockState(clickedPos);
+                if (!DuskLightsLogic.isLinkableState(clickedState)) {
+                    return InteractionResult.PASS;
+                }
+
+                boolean linked = LinkedLightsSavedData.get(serverLevel).toggleLinked(clickedPos.immutable());
+                if (!linked) {
+                    DuskLightsLogic.removeAuxiliaryLightForSource(serverLevel, clickedPos);
+                }
+
+                player.displayClientMessage(Component.translatable(linked
+                        ? "message.dusklights.sensor_enabled"
+                        : "message.dusklights.sensor_disabled"), true);
+                return InteractionResult.SUCCESS;
+            }
+
+            if (!(held.getItem() instanceof BlockItem blockItem)) {
+                return InteractionResult.PASS;
             }
 
             if (!DuskLightsLogic.isLinkableState(blockItem.getBlock().defaultBlockState())) {
-                return net.minecraft.world.InteractionResult.PASS;
+                return InteractionResult.PASS;
             }
 
-            net.minecraft.world.item.context.UseOnContext useOnContext = new net.minecraft.world.item.context.UseOnContext(player, hand, hitResult);
-            net.minecraft.world.item.context.BlockPlaceContext placeContext = new net.minecraft.world.item.context.BlockPlaceContext(useOnContext);
+            if (!DuskLightsConfig.get().defaultSensorEnabled) {
+                return InteractionResult.PASS;
+            }
+
+            UseOnContext useOnContext = new UseOnContext(player, hand, hitResult);
+            BlockPlaceContext placeContext = new BlockPlaceContext(useOnContext);
             net.minecraft.core.BlockPos placedPos = placeContext.replacingClickedOnBlock()
                     ? placeContext.getClickedPos()
                     : placeContext.getClickedPos().relative(placeContext.getClickedFace());
 
             LinkedLightsSavedData.get(serverLevel).addLinked(placedPos.immutable());
-            return net.minecraft.world.InteractionResult.PASS;
+            return InteractionResult.PASS;
         });
         ServerChunkEvents.CHUNK_LOAD.register((level, chunk) -> DuskLightsLogic.handleChunkLoad(level, chunk.getPos()));
     }
@@ -121,13 +123,6 @@ public final class DuskLights implements ModInitializer {
     }
 
     private static void registerCreativeTabEntries() {
-        ItemGroupEvents.modifyEntriesEvent(CreativeModeTabs.FUNCTIONAL_BLOCKS).register(entries -> {
-            entries.accept(LINKED_TORCH);
-            entries.accept(LINKED_LANTERN);
-        });
-    }
-
-    private static Block registerBlock(String path, Block block) {
-        return Registry.register(BuiltInRegistries.BLOCK, new ResourceLocation(MOD_ID, path), block);
+        ItemGroupEvents.modifyEntriesEvent(CreativeModeTabs.FUNCTIONAL_BLOCKS).register(entries -> entries.accept(LINKED_LANTERN));
     }
 }
