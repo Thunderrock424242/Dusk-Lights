@@ -27,7 +27,7 @@ public final class DuskLightsLogic {
     private static final TagKey<Block> DAYLIGHT_LINKABLE = TagKey.create(Registries.BLOCK,
             new ResourceLocation(DuskLights.MOD_ID, "daylight_linkable"));
 
-    private static final int UPDATE_INTERVAL_TICKS = 5;
+    private static final int UPDATE_INTERVAL_TICKS = 1;
     private static final int DAY_LENGTH_TICKS = 24000;
     private static final int CHUNK_SCANS_PER_TICK = 1;
     private static final Set<ResourceLocation> LOGGED_COMPAT_FAILURE_BLOCKS = ConcurrentHashMap.newKeySet();
@@ -229,15 +229,6 @@ public final class DuskLightsLogic {
             return;
         }
 
-        BlockState normalizedVanillaTorchState = normalizeVanillaTorchState(state);
-        if (normalizedVanillaTorchState != state) {
-            BlockState normalizedUpdatedState = tryApplyLightLevel(normalizedVanillaTorchState, brightness);
-            if (normalizedUpdatedState != normalizedVanillaTorchState) {
-                level.setBlock(pos, normalizedUpdatedState, Block.UPDATE_CLIENTS);
-                return;
-            }
-        }
-
         List<BlockPos> helperLightPositions = getHelperLightPositions(pos, state);
         if (brightness <= 0) {
             for (BlockPos helperPos : helperLightPositions) {
@@ -285,20 +276,6 @@ public final class DuskLightsLogic {
         candidates.add(sourcePos.above());
         candidates.add(sourcePos);
         return candidates;
-    }
-
-    private static BlockState normalizeVanillaTorchState(BlockState state) {
-        if (state.is(Blocks.TORCH)) {
-            return Blocks.REDSTONE_TORCH.defaultBlockState();
-        }
-
-        if (state.is(Blocks.WALL_TORCH)) {
-            return Blocks.REDSTONE_WALL_TORCH.defaultBlockState()
-                    .setValue(net.minecraft.world.level.block.RedstoneWallTorchBlock.FACING,
-                            state.getValue(net.minecraft.world.level.block.WallTorchBlock.FACING));
-        }
-
-        return state;
     }
 
     private static BlockState tryApplyLightLevel(BlockState state, int brightness) {
