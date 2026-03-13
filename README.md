@@ -4,11 +4,9 @@ DuskLights adds immersive, automated lighting to Minecraft while keeping a vanil
 
 ## Core gameplay concept
 
-- Craft a **Day/Night Sensor** copy of a vanilla light source for player builds:
-  - **Day/Night Sensor Torch** = `Torch + Daylight Detector`
-  - **Day/Night Sensor Lantern** = `Lantern + Daylight Detector`
-- Place those sensor items to create lights that are automatically linked to the day/night cycle.
-- Linked lights transition smoothly around dusk and dawn instead of hard toggling.
+- Use empty-hand right click on a compatible light to toggle its day/night sensor on or off.
+- Sensor-enabled lights are automatically linked to the day/night cycle.
+- Linked lights stay fully off in daytime, ramp up over 20 seconds at sunset, then stay on through the night.
 - Naturally generated structures are auto-linked when chunks are generated.
 - The system is data-driven so modded light blocks can opt in via `dusklights:daylight_linkable`.
 - Modded lights are runtime-discovered and normal placed items are auto-linked (no custom linked item required in most cases).

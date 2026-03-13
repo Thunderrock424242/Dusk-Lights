@@ -66,8 +66,8 @@ public final class DuskLightsConfig {
 
     public static final class Values {
         public int sunsetStartTick = 12000;
-        public double sunsetRampMinutes = 1.0;
-        public int sunsetMinimumBrightness = 1;
+        public double sunsetRampMinutes = 20.0D / 1200.0D;
+        public int sunsetMinimumBrightness = 0;
 
         public int sunriseStartTick = 23000;
         public double sunriseRampMinutes = 1.0;

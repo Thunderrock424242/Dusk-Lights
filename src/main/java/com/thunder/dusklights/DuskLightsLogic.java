@@ -162,29 +162,22 @@ public final class DuskLightsLogic {
 
         int timeOfDay = Math.floorMod((int) level.getDayTime(), DAY_LENGTH_TICKS);
         int sunsetDurationTicks = minutesToTicks(config.sunsetRampMinutes);
-        int sunriseDurationTicks = minutesToTicks(config.sunriseRampMinutes);
-
         int sunsetStart = config.sunsetStartTick;
         int sunsetEnd = wrapTick(sunsetStart + sunsetDurationTicks);
 
         int sunriseStart = config.sunriseStartTick;
-        int sunriseEnd = wrapTick(sunriseStart + sunriseDurationTicks);
 
         float minAtSunset = config.sunsetMinimumBrightness / 15.0F;
         float brightness;
 
-        if (!isWithinTimeWindow(timeOfDay, sunsetStart, sunriseEnd)) {
-            brightness = 0.0F;
-        } else if (isWithinTimeWindow(timeOfDay, sunsetStart, sunsetEnd)) {
+        if (isWithinTimeWindow(timeOfDay, sunsetStart, sunsetEnd)) {
             float progress = normalizedProgress(timeOfDay, sunsetStart, sunsetDurationTicks);
             float eased = smoothstep(progress);
             brightness = minAtSunset + (1.0F - minAtSunset) * eased;
-        } else if (isWithinTimeWindow(timeOfDay, sunriseStart, sunriseEnd)) {
-            float progress = normalizedProgress(timeOfDay, sunriseStart, sunriseDurationTicks);
-            float eased = smoothstep(progress);
-            brightness = 1.0F - eased;
-        } else {
+        } else if (isWithinTimeWindow(timeOfDay, sunsetEnd, sunriseStart)) {
             brightness = 1.0F;
+        } else {
+            brightness = 0.0F;
         }
 
         return Math.max(0, Math.min(15, Math.round(brightness * 15.0F)));
