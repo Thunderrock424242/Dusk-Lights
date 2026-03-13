@@ -135,12 +135,7 @@ public final class DuskLightsLogic {
 
 
     public static boolean isLinkableState(BlockState state) {
-        return (state.is(DAYLIGHT_LINKABLE) || AutoCompatDiscovery.isDiscoveredLinkable(state))
-                && supportsDayNightCycleControl(state);
-    }
-
-    private static boolean supportsDayNightCycleControl(BlockState state) {
-        return hasBrightnessControlProperty(state) || state.getLightEmission() <= 0;
+        return state.is(DAYLIGHT_LINKABLE) || AutoCompatDiscovery.isDiscoveredLinkable(state);
     }
 
     public static void setDebugLightsEnabled(Boolean enabled) {
