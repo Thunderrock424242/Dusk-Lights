@@ -2,6 +2,7 @@ package com.thunder.dusklights;
 
 import net.fabricmc.api.ModInitializer;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerChunkEvents;
+import net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
 import net.fabricmc.fabric.api.event.player.UseBlockCallback;
 import net.fabricmc.fabric.api.itemgroup.v1.ItemGroupEvents;
@@ -20,6 +21,8 @@ import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import static net.minecraft.commands.Commands.literal;
 
 public final class DuskLights implements ModInitializer {
     public static final String MOD_ID = "dusklights";
@@ -113,6 +116,31 @@ public final class DuskLights implements ModInitializer {
             return InteractionResult.PASS;
         });
         ServerChunkEvents.CHUNK_LOAD.register((level, chunk) -> DuskLightsLogic.handleChunkLoad(level, chunk.getPos()));
+
+        CommandRegistrationCallback.EVENT.register((dispatcher, registryAccess, environment) -> dispatcher.register(
+                literal("dusklightsdebug")
+                        .requires(source -> source.hasPermission(2))
+                        .then(literal("lights")
+                                .then(literal("on").executes(context -> {
+                                    DuskLightsLogic.setDebugLightsEnabled(true);
+                                    context.getSource().sendSuccess(() -> Component.translatable("command.dusklights.debug.lights", "on"), true);
+                                    return 1;
+                                }))
+                                .then(literal("off").executes(context -> {
+                                    DuskLightsLogic.setDebugLightsEnabled(false);
+                                    context.getSource().sendSuccess(() -> Component.translatable("command.dusklights.debug.lights", "off"), true);
+                                    return 1;
+                                }))
+                                .then(literal("auto").executes(context -> {
+                                    DuskLightsLogic.setDebugLightsEnabled(null);
+                                    context.getSource().sendSuccess(() -> Component.translatable("command.dusklights.debug.lights", "auto"), true);
+                                    return 1;
+                                }))
+                                .executes(context -> {
+                                    context.getSource().sendSuccess(() -> Component.translatable("command.dusklights.debug.current", DuskLightsLogic.getDebugLightsMode()), false);
+                                    return 1;
+                                }))
+        ));
     }
 
     @Override

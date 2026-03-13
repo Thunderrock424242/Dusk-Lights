@@ -3,5 +3,7 @@
   "dusklights.description": "Immersive day-night linked lighting for torches, lanterns, and compatible modded lights.",
   "item.dusklights.linked_lantern": "Day/Night Sensor Lantern",
   "message.dusklights.sensor_enabled": "Day/Night sensor enabled",
-  "message.dusklights.sensor_disabled": "Day/Night sensor disabled"
+  "message.dusklights.sensor_disabled": "Day/Night sensor disabled",
+  "command.dusklights.debug.lights": "Debug light mode set to %s",
+  "command.dusklights.debug.current": "Debug light mode is %s"
 }

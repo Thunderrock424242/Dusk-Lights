@@ -32,6 +32,15 @@ DuskLights adds immersive, automated lighting to Minecraft while keeping a vanil
 Natural lights (like torches/lanterns in generated structures) are discovered dynamically.
 When a chunk loads, DuskLights queues it for scanning and processes scans gradually during server ticks to avoid heavy world-join spikes.
 
+## Debug command
+
+Server operators can force all linked lights for debugging:
+
+- `/dusklightsdebug lights on` - force linked lights fully on.
+- `/dusklightsdebug lights off` - force linked lights fully off.
+- `/dusklightsdebug lights auto` - return to normal day/night behavior.
+- `/dusklightsdebug lights` - view current debug mode.
+
 ## Useful Gradle tasks
 
 From the repository root:

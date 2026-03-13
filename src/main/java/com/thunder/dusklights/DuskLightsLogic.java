@@ -31,6 +31,7 @@ public final class DuskLightsLogic {
     private static final int DAY_LENGTH_TICKS = 24000;
     private static final int CHUNK_SCANS_PER_TICK = 1;
     private static final Set<ResourceLocation> LOGGED_COMPAT_FAILURE_BLOCKS = ConcurrentHashMap.newKeySet();
+    private static Integer debugForcedBrightness;
 
     private DuskLightsLogic() {
     }
@@ -135,7 +136,28 @@ public final class DuskLightsLogic {
         return state.is(DAYLIGHT_LINKABLE) || AutoCompatDiscovery.isDiscoveredLinkable(state);
     }
 
+    public static void setDebugLightsEnabled(Boolean enabled) {
+        if (enabled == null) {
+            debugForcedBrightness = null;
+            return;
+        }
+
+        debugForcedBrightness = enabled ? 15 : 0;
+    }
+
+    public static String getDebugLightsMode() {
+        if (debugForcedBrightness == null) {
+            return "auto";
+        }
+
+        return debugForcedBrightness > 0 ? "on" : "off";
+    }
+
     private static int calculateBrightness(Level level) {
+        if (debugForcedBrightness != null) {
+            return debugForcedBrightness;
+        }
+
         DuskLightsConfig.Values config = DuskLightsConfig.get();
 
         int timeOfDay = Math.floorMod((int) level.getDayTime(), DAY_LENGTH_TICKS);
