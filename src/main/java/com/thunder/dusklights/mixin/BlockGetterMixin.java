@@ -9,7 +9,7 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 @Mixin(BlockGetter.class)
-public abstract class BlockGetterMixin {
+public interface BlockGetterMixin {
     @Inject(method = "getLightEmission", at = @At("HEAD"))
     private void dusklights$beginLightEmissionLookup(BlockPos pos, CallbackInfoReturnable<Integer> cir) {
         DuskLightsLogic.pushLightQueryContext((BlockGetter) (Object) this, pos);
