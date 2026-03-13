@@ -1,0 +1,8 @@
+{
+  "variants": {
+    "facing=east": { "model": "dusklights:block/linked_wall_torch", "y": 90 },
+    "facing=north": { "model": "dusklights:block/linked_wall_torch" },
+    "facing=south": { "model": "dusklights:block/linked_wall_torch", "y": 180 },
+    "facing=west": { "model": "dusklights:block/linked_wall_torch", "y": 270 }
+  }
+}
