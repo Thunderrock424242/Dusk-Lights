@@ -66,8 +66,11 @@ public final class DuskLights implements ModInitializer {
         initialized = true;
         LOGGER.info("Initializing {}", MOD_ID);
         DuskLightsConfig.Values config = DuskLightsConfig.get();
-        LOGGER.info("Loaded dusk config: sunsetStartTick={}, sunsetRampMinutes={}, sunriseStartTick={}, sunriseRampMinutes={}, autoCompatDiscovery={}",
-                config.sunsetStartTick, config.sunsetRampMinutes, config.sunriseStartTick, config.sunriseRampMinutes, config.autoCompatDiscovery);
+        LOGGER.info("Loaded dusk config: sunsetStartTick={}, sunsetRampMinutes={}, sunriseStartTick={}, sunriseRampMinutes={}, autoCompatDiscovery={}, manualCompatBlockIds={}",
+                config.sunsetStartTick, config.sunsetRampMinutes, config.sunriseStartTick, config.sunriseRampMinutes,
+                config.autoCompatDiscovery, config.manualCompatBlockIds.size());
+
+        AutoCompatDiscovery.registerConfiguredLinkableBlocks(config.manualCompatBlockIds);
 
         if (config.autoCompatDiscovery) {
             AutoCompatDiscovery.discoverModdedLights();

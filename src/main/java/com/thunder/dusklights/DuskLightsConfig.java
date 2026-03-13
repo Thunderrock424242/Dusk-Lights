@@ -10,6 +10,8 @@ import java.io.Writer;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.ArrayList;
+import java.util.List;
 
 public final class DuskLightsConfig {
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
@@ -71,6 +73,7 @@ public final class DuskLightsConfig {
         public double sunriseRampMinutes = 1.0;
 
         public boolean autoCompatDiscovery = true;
+        public List<String> manualCompatBlockIds = new ArrayList<>();
 
         private void sanitize() {
             sunsetStartTick = clamp(sunsetStartTick, 0, 23999);
@@ -80,6 +83,12 @@ public final class DuskLightsConfig {
             sunriseRampMinutes = clamp(sunriseRampMinutes, 0.05, 30.0);
 
             sunsetMinimumBrightness = clamp(sunsetMinimumBrightness, 0, 14);
+
+            if (manualCompatBlockIds == null) {
+                manualCompatBlockIds = new ArrayList<>();
+            } else {
+                manualCompatBlockIds.removeIf(value -> value == null || value.isBlank());
+            }
         }
 
         private static int clamp(int value, int min, int max) {

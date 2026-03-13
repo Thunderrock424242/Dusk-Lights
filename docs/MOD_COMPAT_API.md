@@ -2,6 +2,14 @@
 
 This API allows other mods to plug custom light block behavior into DuskLights.
 
+## Integration paths
+
+You have three ways to integrate with DuskLights:
+
+1. **Mod-side API/tag integration (recommended):** your mod ships a `dusklights:daylight_linkable` tag entry and optional `DuskLightsCompatApi` handler.
+2. **Pack/server-side manual compat:** set `manualCompatBlockIds` in `config/dusklights.json` to force specific block ids to be treated as linkable.
+3. **Automatic discovery:** leave `autoCompatDiscovery=true` to let DuskLights discover torch-like blocks at runtime.
+
 ## 1) Mark your block as linkable
 
 Add your block id to the `dusklights:daylight_linkable` block tag.
@@ -82,7 +90,20 @@ If DuskLights cannot control a tagged block (for example, no compatible state pr
 it logs a compat error that includes the owning mod id and asks users to report it to that mod.
 
 
-### Config toggle
+### Config toggles
 
 Server owners can disable runtime discovery via `config/dusklights.json` by setting `autoCompatDiscovery` to `false` (default is `true`).
-When disabled, only explicitly tagged blocks and existing compat handlers are used.
+When disabled, only explicitly tagged blocks, manually configured block ids, and existing compat handlers are used.
+
+You can also force linkability for specific block ids:
+
+```json
+{
+  "manualCompatBlockIds": [
+    "yourmod:custom_torch",
+    "yourmod:custom_wall_torch"
+  ]
+}
+```
+
+This is useful when a mod does not ship DuskLights integration but you still want predictable behavior in a modpack.

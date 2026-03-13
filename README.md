@@ -45,3 +45,17 @@ From the repository root:
 Runtime light timing is configured in `config/dusklights.json`.
 
 Set `autoCompatDiscovery` (default `true`) to enable/disable runtime scanning of modded lights for auto-compat linking.
+
+You can also manually register additional block ids through config with `manualCompatBlockIds`:
+
+```json
+{
+  "autoCompatDiscovery": false,
+  "manualCompatBlockIds": [
+    "some_mod:bronze_torch",
+    "another_mod:wall_brazier"
+  ]
+}
+```
+
+This lets pack authors hardcode compat without requiring those mods to ship a DuskLights integration.

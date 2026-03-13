@@ -16,6 +16,7 @@ import java.util.regex.Pattern;
 public final class AutoCompatDiscovery {
     private static final Pattern TORCH_NAME_PATTERN = Pattern.compile("(^|_)torches?($|_)");
     private static final Set<Block> DISCOVERED_LINKABLE_BLOCKS = ConcurrentHashMap.newKeySet();
+    private static final Set<Block> MANUAL_LINKABLE_BLOCKS = ConcurrentHashMap.newKeySet();
     private static volatile boolean discovered;
 
     private AutoCompatDiscovery() {
@@ -47,7 +48,39 @@ public final class AutoCompatDiscovery {
     }
 
     public static boolean isDiscoveredLinkable(BlockState state) {
-        return DISCOVERED_LINKABLE_BLOCKS.contains(state.getBlock());
+        Block block = state.getBlock();
+        return DISCOVERED_LINKABLE_BLOCKS.contains(block) || MANUAL_LINKABLE_BLOCKS.contains(block);
+    }
+
+    public static synchronized void registerConfiguredLinkableBlocks(Iterable<String> blockIds) {
+        for (String blockId : blockIds) {
+            if (blockId == null || blockId.isBlank()) {
+                continue;
+            }
+
+            ResourceLocation id = ResourceLocation.tryParse(blockId.trim());
+            if (id == null) {
+                DuskLights.LOGGER.warn("Skipping invalid manual compat block id '{}'", blockId);
+                continue;
+            }
+
+            registerManualLinkableBlock(id);
+        }
+    }
+
+    public static synchronized void registerManualLinkableBlock(ResourceLocation id) {
+        if (!BuiltInRegistries.BLOCK.containsKey(id)) {
+            DuskLights.LOGGER.warn("Skipping manual compat block '{}': block is not registered", id);
+            return;
+        }
+
+        registerManualLinkableBlock(BuiltInRegistries.BLOCK.get(id), id);
+    }
+
+    public static synchronized void registerManualLinkableBlock(Block block, ResourceLocation id) {
+        if (MANUAL_LINKABLE_BLOCKS.add(block)) {
+            DuskLights.LOGGER.info("Registered manual DuskLights compat block: {}", id);
+        }
     }
 
     private static boolean isTorchCandidate(Block block, ResourceLocation id, BlockState state) {
