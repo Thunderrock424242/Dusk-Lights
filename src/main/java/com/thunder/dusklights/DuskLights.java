@@ -1,28 +1,33 @@
 package com.thunder.dusklights;
 
-import net.fabricmc.api.ModInitializer;
-import net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback;
-import net.fabricmc.fabric.api.event.lifecycle.v1.ServerChunkEvents;
-import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
-import net.fabricmc.fabric.api.event.player.UseBlockCallback;
 import net.minecraft.network.chat.Component;
-import net.minecraft.world.InteractionResult;
-import net.minecraft.world.item.BlockItem;
-import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.item.context.BlockPlaceContext;
-import net.minecraft.world.item.context.UseOnContext;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.level.block.state.BlockState;
+import net.neoforged.bus.api.SubscribeEvent;
+import net.neoforged.fml.common.EventBusSubscriber;
+import net.neoforged.fml.common.Mod;
+import net.neoforged.neoforge.common.NeoForge;
+import net.neoforged.neoforge.event.entity.player.PlayerInteractEvent;
+import net.neoforged.neoforge.event.level.BlockEvent;
+import net.neoforged.neoforge.event.level.ChunkEvent;
+import net.neoforged.neoforge.event.tick.LevelTickEvent;
+import net.neoforged.neoforge.event.RegisterCommandsEvent;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import static net.minecraft.commands.Commands.literal;
 
-public final class DuskLights implements ModInitializer {
+@Mod(DuskLights.MOD_ID)
+public final class DuskLights {
     public static final String MOD_ID = "dusklights";
     public static final Logger LOGGER = LoggerFactory.getLogger(MOD_ID);
 
     private static boolean initialized;
 
     public DuskLights() {
+        init();
+        NeoForge.EVENT_BUS.register(NeoForgeHandlers.class);
     }
 
     public static void init() {
@@ -43,24 +48,34 @@ public final class DuskLights implements ModInitializer {
         } else {
             LOGGER.info("Auto compat discovery is disabled by config.");
         }
+    }
 
-        ServerTickEvents.END_WORLD_TICK.register(DuskLightsLogic::tickServerLevel);
-        UseBlockCallback.EVENT.register((player, world, hand, hitResult) -> {
-            if (world.isClientSide()) {
-                return InteractionResult.PASS;
+    @EventBusSubscriber(modid = MOD_ID)
+    public static final class NeoForgeHandlers {
+        private NeoForgeHandlers() {
+        }
+
+        @SubscribeEvent
+        public static void onLevelTick(LevelTickEvent.Post event) {
+            if (event.getLevel() instanceof ServerLevel serverLevel) {
+                DuskLightsLogic.tickServerLevel(serverLevel);
+            }
+        }
+
+        @SubscribeEvent
+        public static void onRightClickBlock(PlayerInteractEvent.RightClickBlock event) {
+            if (!(event.getLevel() instanceof ServerLevel serverLevel)) {
+                return;
             }
 
-            if (!(world instanceof net.minecraft.server.level.ServerLevel serverLevel)) {
-                return InteractionResult.PASS;
-            }
-
-            ItemStack held = player.getItemInHand(hand);
-            net.minecraft.core.BlockPos clickedPos = hitResult.getBlockPos();
+            Player player = event.getEntity();
+            var held = player.getItemInHand(event.getHand());
+            var clickedPos = event.getPos();
 
             if (held.isEmpty()) {
-                net.minecraft.world.level.block.state.BlockState clickedState = serverLevel.getBlockState(clickedPos);
+                BlockState clickedState = serverLevel.getBlockState(clickedPos);
                 if (!DuskLightsLogic.isLinkableState(clickedState)) {
-                    return InteractionResult.PASS;
+                    return;
                 }
 
                 boolean linked = LinkedLightsSavedData.get(serverLevel).toggleLinked(clickedPos.immutable());
@@ -71,62 +86,68 @@ public final class DuskLights implements ModInitializer {
                 player.displayClientMessage(Component.translatable(linked
                         ? "message.dusklights.sensor_enabled"
                         : "message.dusklights.sensor_disabled"), true);
-                return InteractionResult.SUCCESS;
+
+                event.setCancellationResult(net.minecraft.world.InteractionResult.SUCCESS);
+                event.setCanceled(true);
+            }
+        }
+
+        @SubscribeEvent
+        public static void onBlockPlaced(BlockEvent.EntityPlaceEvent event) {
+            if (!(event.getLevel() instanceof ServerLevel serverLevel)) {
+                return;
             }
 
-            if (!(held.getItem() instanceof BlockItem blockItem)) {
-                return InteractionResult.PASS;
-            }
-
-            if (!DuskLightsLogic.isLinkableState(blockItem.getBlock().defaultBlockState())) {
-                return InteractionResult.PASS;
+            if (!(event.getEntity() instanceof Player player)) {
+                return;
             }
 
             if (!DuskLightsConfig.get().defaultSensorEnabled) {
-                return InteractionResult.PASS;
+                return;
             }
 
-            UseOnContext useOnContext = new UseOnContext(player, hand, hitResult);
-            BlockPlaceContext placeContext = new BlockPlaceContext(useOnContext);
-            net.minecraft.core.BlockPos placedPos = placeContext.replacingClickedOnBlock()
-                    ? placeContext.getClickedPos()
-                    : placeContext.getClickedPos().relative(placeContext.getClickedFace());
+            if (!DuskLightsLogic.isLinkableState(event.getPlacedBlock())) {
+                return;
+            }
 
-            net.minecraft.core.BlockPos linkedPos = placedPos.immutable();
+            var linkedPos = event.getPos().immutable();
             LinkedLightsSavedData.get(serverLevel).addLinked(linkedPos);
             DuskLightsLogic.refreshLinkedLight(serverLevel, linkedPos);
-            return InteractionResult.PASS;
-        });
-        ServerChunkEvents.CHUNK_LOAD.register((level, chunk) -> DuskLightsLogic.handleChunkLoad(level, chunk.getPos()));
+        }
 
-        CommandRegistrationCallback.EVENT.register((dispatcher, registryAccess, environment) -> dispatcher.register(
-                literal("dusklightsdebug")
-                        .requires(source -> source.hasPermission(2))
-                        .then(literal("lights")
-                                .then(literal("on").executes(context -> {
-                                    DuskLightsLogic.setDebugLightsEnabled(true);
-                                    context.getSource().sendSuccess(() -> Component.translatable("command.dusklights.debug.lights", "on"), true);
-                                    return 1;
-                                }))
-                                .then(literal("off").executes(context -> {
-                                    DuskLightsLogic.setDebugLightsEnabled(false);
-                                    context.getSource().sendSuccess(() -> Component.translatable("command.dusklights.debug.lights", "off"), true);
-                                    return 1;
-                                }))
-                                .then(literal("auto").executes(context -> {
-                                    DuskLightsLogic.setDebugLightsEnabled(null);
-                                    context.getSource().sendSuccess(() -> Component.translatable("command.dusklights.debug.lights", "auto"), true);
-                                    return 1;
-                                }))
-                                .executes(context -> {
-                                    context.getSource().sendSuccess(() -> Component.translatable("command.dusklights.debug.current", DuskLightsLogic.getDebugLightsMode()), false);
-                                    return 1;
-                                }))
-        ));
-    }
+        @SubscribeEvent
+        public static void onChunkLoad(ChunkEvent.Load event) {
+            if (event.getLevel() instanceof ServerLevel serverLevel) {
+                DuskLightsLogic.handleChunkLoad(serverLevel, event.getChunk().getPos());
+            }
+        }
 
-    @Override
-    public void onInitialize() {
-        init();
+        @SubscribeEvent
+        public static void onRegisterCommands(RegisterCommandsEvent event) {
+            event.getDispatcher().register(
+                    literal("dusklightsdebug")
+                            .requires(source -> source.hasPermission(2))
+                            .then(literal("lights")
+                                    .then(literal("on").executes(context -> {
+                                        DuskLightsLogic.setDebugLightsEnabled(true);
+                                        context.getSource().sendSuccess(() -> Component.translatable("command.dusklights.debug.lights", "on"), true);
+                                        return 1;
+                                    }))
+                                    .then(literal("off").executes(context -> {
+                                        DuskLightsLogic.setDebugLightsEnabled(false);
+                                        context.getSource().sendSuccess(() -> Component.translatable("command.dusklights.debug.lights", "off"), true);
+                                        return 1;
+                                    }))
+                                    .then(literal("auto").executes(context -> {
+                                        DuskLightsLogic.setDebugLightsEnabled(null);
+                                        context.getSource().sendSuccess(() -> Component.translatable("command.dusklights.debug.lights", "auto"), true);
+                                        return 1;
+                                    }))
+                                    .executes(context -> {
+                                        context.getSource().sendSuccess(() -> Component.translatable("command.dusklights.debug.current", DuskLightsLogic.getDebugLightsMode()), false);
+                                        return 1;
+                                    }))
+            );
+        }
     }
 }

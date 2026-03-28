@@ -5,7 +5,9 @@ import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.LongTag;
 import net.minecraft.nbt.Tag;
+import net.minecraft.core.HolderLookup;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.util.datafix.DataFixTypes;
 import net.minecraft.world.level.saveddata.SavedData;
 
 import java.util.ArrayDeque;
@@ -23,11 +25,17 @@ public final class LinkedLightsSavedData extends SavedData {
     private final ArrayDeque<Long> pendingChunkScans = new ArrayDeque<>();
     private final Set<Long> pendingChunkScanSet = new HashSet<>();
 
+    private static final SavedData.Factory<LinkedLightsSavedData> FACTORY = new SavedData.Factory<>(
+            LinkedLightsSavedData::new,
+            LinkedLightsSavedData::load,
+            DataFixTypes.LEVEL
+    );
+
     public static LinkedLightsSavedData get(ServerLevel level) {
-        return level.getDataStorage().computeIfAbsent(LinkedLightsSavedData::load, LinkedLightsSavedData::new, DATA_NAME);
+        return level.getDataStorage().computeIfAbsent(FACTORY, DATA_NAME);
     }
 
-    private static LinkedLightsSavedData load(CompoundTag tag) {
+    private static LinkedLightsSavedData load(CompoundTag tag, HolderLookup.Provider provider) {
         LinkedLightsSavedData data = new LinkedLightsSavedData();
 
         ListTag linkedLights = tag.getList(LINKED_LIGHTS_KEY, Tag.TAG_LONG);
@@ -51,7 +59,7 @@ public final class LinkedLightsSavedData extends SavedData {
     }
 
     @Override
-    public CompoundTag save(CompoundTag tag) {
+    public CompoundTag save(CompoundTag tag, HolderLookup.Provider provider) {
         ListTag linkedLights = new ListTag();
         for (Long packedPos : linkedLightPositions) {
             linkedLights.add(LongTag.valueOf(packedPos));
