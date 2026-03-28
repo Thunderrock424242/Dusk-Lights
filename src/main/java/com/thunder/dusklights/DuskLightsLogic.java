@@ -26,7 +26,7 @@ import java.util.concurrent.ConcurrentHashMap;
 
 public final class DuskLightsLogic {
     private static final TagKey<Block> DAYLIGHT_LINKABLE = TagKey.create(Registries.BLOCK,
-            new ResourceLocation(DuskLights.MOD_ID, "daylight_linkable"));
+            ResourceLocation.fromNamespaceAndPath(DuskLights.MOD_ID, "daylight_linkable"));
 
     private static final int UPDATE_INTERVAL_TICKS = 1;
     private static final int DAY_LENGTH_TICKS = 24000;

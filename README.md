@@ -1,4 +1,4 @@
-# Dusk Lights (Fabric 1.20.1)
+# Dusk Lights (NeoForge 1.21.1)
 
 DuskLights adds immersive, automated lighting to Minecraft while keeping a vanilla look.
 
@@ -21,8 +21,8 @@ DuskLights adds immersive, automated lighting to Minecraft while keeping a vanil
 
 ## Project layout
 
-- `src/main/java` - Fabric mod code.
-- `src/main/resources` - Fabric metadata, assets, recipes, and tags.
+- `src/main/java` - NeoForge mod code.
+- `src/main/resources` - shared assets/data and mixin config.
 - Compatibility API docs for mod developers: `docs/MOD_COMPAT_API.md`.
 
 ## Natural structure light linking
@@ -43,8 +43,8 @@ Server operators can force all linked lights for debugging:
 
 From the repository root:
 
-- `./gradlew runClient` - run Fabric client in dev.
-- `./gradlew runServer` - run Fabric dedicated server in dev.
+- `./gradlew runClient` - run NeoForge client in dev.
+- `./gradlew runServer` - run NeoForge dedicated server in dev.
 - `./gradlew build` - build the mod jars.
 
 ## Configuration
