@@ -14,6 +14,7 @@ import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.LightBlock;
+import net.minecraft.world.level.block.TorchBlock;
 import net.minecraft.world.level.block.WallTorchBlock;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.properties.BooleanProperty;
@@ -21,6 +22,7 @@ import net.minecraft.world.level.block.state.properties.IntegerProperty;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -33,6 +35,8 @@ public final class DuskLightsLogic {
     private static final int CHUNK_SCANS_PER_TICK = 1;
     private static final Set<ResourceLocation> LOGGED_COMPAT_FAILURE_BLOCKS = ConcurrentHashMap.newKeySet();
     private static final ThreadLocal<LightQueryContext> LIGHT_QUERY_CONTEXT = new ThreadLocal<>();
+    private static final Map<ResourceLocation, Map<Long, Long>> TORCH_PLACEMENT_TICKS = new ConcurrentHashMap<>();
+    private static final Map<ResourceLocation, Map<Long, Long>> TORCH_SUBMERGED_TICKS = new ConcurrentHashMap<>();
     private static Integer debugForcedBrightness;
 
     private DuskLightsLogic() {
@@ -79,7 +83,7 @@ public final class DuskLightsLogic {
             return false;
         }
 
-        applyBrightness(level, pos, state, calculateBrightness(level));
+        applyBrightness(level, pos, state, calculateBrightness(level, pos, state));
         return true;
     }
 
@@ -157,7 +161,15 @@ public final class DuskLightsLogic {
 
 
     public static int getTargetBrightness(Level level) {
-        return calculateBrightness(level);
+        return calculateBrightness(level, null, null);
+    }
+
+    public static void registerPlayerPlacedLight(ServerLevel level, BlockPos pos, BlockState state) {
+        if (!isDynamicTorchState(state)) {
+            return;
+        }
+
+        markTorchTick(TORCH_PLACEMENT_TICKS, level, pos, level.getGameTime());
     }
 
     public static void pushLightQueryContext(BlockGetter getter, BlockPos pos) {
@@ -181,7 +193,7 @@ public final class DuskLightsLogic {
         return getTargetBrightness(serverLevel);
     }
 
-    private static int calculateBrightness(Level level) {
+    private static int calculateBrightness(Level level, BlockPos pos, BlockState state) {
         if (debugForcedBrightness != null) {
             return debugForcedBrightness;
         }
@@ -208,7 +220,131 @@ public final class DuskLightsLogic {
             brightness = 0.0F;
         }
 
-        return Math.max(0, Math.min(15, Math.round(brightness * 15.0F)));
+        int baseBrightness = Math.max(0, Math.min(15, Math.round(brightness * 15.0F)));
+        if (!(level instanceof ServerLevel serverLevel) || pos == null || state == null) {
+            return baseBrightness;
+        }
+
+        return applyDynamicTorchEffects(serverLevel, pos, state, baseBrightness, config);
+    }
+
+    private static int applyDynamicTorchEffects(ServerLevel level, BlockPos pos, BlockState state, int baseBrightness, DuskLightsConfig.Values config) {
+        if (!config.dynamicTorchesEnabled || !isDynamicTorchState(state)) {
+            return baseBrightness;
+        }
+
+        int brightness = baseBrightness;
+
+        if (brightness > 0 && isTorchExposedToRain(level, pos)) {
+            brightness = Math.max(1, Math.round(brightness * (float) config.torchRainBrightnessMultiplier));
+        }
+
+        if (brightness > 0 && level.isThundering() && isTorchExposedToRain(level, pos) && shouldStormFlicker(level, pos, config.torchStormFlickerChance)) {
+            brightness = Math.max(1, brightness - 1 - (int) (Math.floorMod(level.getGameTime() + pos.asLong(), 2)));
+        }
+
+        if (brightness > 0) {
+            brightness = applyTorchWarmupCap(level, pos, brightness, config.torchWarmupSeconds);
+        }
+
+        return applyUnderwaterSputter(level, pos, brightness, config.torchUnderwaterSputterSeconds);
+    }
+
+    private static int applyTorchWarmupCap(ServerLevel level, BlockPos pos, int targetBrightness, int warmupSeconds) {
+        if (warmupSeconds <= 0 || level.getBrightness(net.minecraft.world.level.LightLayer.SKY, pos) > 5) {
+            return targetBrightness;
+        }
+
+        Long placedTick = getTorchTick(TORCH_PLACEMENT_TICKS, level, pos);
+        if (placedTick == null) {
+            return targetBrightness;
+        }
+
+        int warmupTicks = warmupSeconds * 20;
+        long elapsed = Math.max(0L, level.getGameTime() - placedTick);
+        float progress = Math.max(0.0F, Math.min(1.0F, elapsed / (float) Math.max(1, warmupTicks)));
+        int cappedBrightness = Math.max(1, Math.round(targetBrightness * progress));
+        if (progress >= 1.0F) {
+            removeTorchTick(TORCH_PLACEMENT_TICKS, level, pos);
+        }
+        return Math.min(targetBrightness, cappedBrightness);
+    }
+
+    private static int applyUnderwaterSputter(ServerLevel level, BlockPos pos, int brightness, int sputterSeconds) {
+        boolean submerged = !level.getFluidState(pos).isEmpty() || !level.getFluidState(pos.above()).isEmpty();
+        if (!submerged) {
+            removeTorchTick(TORCH_SUBMERGED_TICKS, level, pos);
+            return brightness;
+        }
+
+        long now = level.getGameTime();
+        long startTick = getOrCreateTorchTick(TORCH_SUBMERGED_TICKS, level, pos, now);
+        int sputterTicks = Math.max(0, sputterSeconds) * 20;
+        if (sputterTicks == 0 || now - startTick >= sputterTicks) {
+            return 0;
+        }
+
+        long phase = (now - startTick) % 6;
+        if (phase < 2) {
+            return Math.max(1, brightness / 3);
+        }
+        if (phase < 4) {
+            return Math.max(1, brightness / 2);
+        }
+        return brightness;
+    }
+
+    private static boolean isTorchExposedToRain(ServerLevel level, BlockPos pos) {
+        if (!level.isRaining()) {
+            return false;
+        }
+
+        BlockPos checkPos = pos.above();
+        return level.canSeeSky(checkPos) && level.isRainingAt(checkPos);
+    }
+
+    private static boolean shouldStormFlicker(ServerLevel level, BlockPos pos, double chance) {
+        if (chance <= 0.0D) {
+            return false;
+        }
+
+        long flickerWindow = level.getGameTime() / 2L;
+        long sample = Math.floorMod(pos.asLong() * 31L + flickerWindow * 17L, 10_000L);
+        return sample < (long) (chance * 10_000L);
+    }
+
+    private static boolean isDynamicTorchState(BlockState state) {
+        return state.getBlock() instanceof TorchBlock || state.getBlock() instanceof WallTorchBlock;
+    }
+
+    private static void markTorchTick(Map<ResourceLocation, Map<Long, Long>> source, ServerLevel level, BlockPos pos, long tick) {
+        source.computeIfAbsent(level.dimension().location(), key -> new ConcurrentHashMap<>()).put(pos.asLong(), tick);
+    }
+
+    private static Long getTorchTick(Map<ResourceLocation, Map<Long, Long>> source, ServerLevel level, BlockPos pos) {
+        Map<Long, Long> ticks = source.get(level.dimension().location());
+        if (ticks == null) {
+            return null;
+        }
+
+        return ticks.get(pos.asLong());
+    }
+
+    private static long getOrCreateTorchTick(Map<ResourceLocation, Map<Long, Long>> source, ServerLevel level, BlockPos pos, long defaultTick) {
+        Map<Long, Long> ticks = source.computeIfAbsent(level.dimension().location(), key -> new ConcurrentHashMap<>());
+        return ticks.computeIfAbsent(pos.asLong(), key -> defaultTick);
+    }
+
+    private static void removeTorchTick(Map<ResourceLocation, Map<Long, Long>> source, ServerLevel level, BlockPos pos) {
+        Map<Long, Long> ticks = source.get(level.dimension().location());
+        if (ticks == null) {
+            return;
+        }
+
+        ticks.remove(pos.asLong());
+        if (ticks.isEmpty()) {
+            source.remove(level.dimension().location());
+        }
     }
 
     private static boolean isWithinTimeWindow(int value, int start, int end) {

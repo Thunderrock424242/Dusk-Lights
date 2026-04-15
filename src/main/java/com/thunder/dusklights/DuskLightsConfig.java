@@ -76,6 +76,12 @@ public final class DuskLightsConfig {
         public boolean defaultSensorEnabled = true;
         public List<String> manualCompatBlockIds = new ArrayList<>();
 
+        public boolean dynamicTorchesEnabled = true;
+        public double torchRainBrightnessMultiplier = 0.65D;
+        public double torchStormFlickerChance = 0.35D;
+        public int torchWarmupSeconds = 5;
+        public int torchUnderwaterSputterSeconds = 2;
+
         private void sanitize() {
             sunsetStartTick = clamp(sunsetStartTick, 0, 23999);
             sunriseStartTick = clamp(sunriseStartTick, 0, 23999);
@@ -90,6 +96,11 @@ public final class DuskLightsConfig {
             } else {
                 manualCompatBlockIds.removeIf(value -> value == null || value.isBlank());
             }
+
+            torchRainBrightnessMultiplier = clamp(torchRainBrightnessMultiplier, 0.1D, 1.0D);
+            torchStormFlickerChance = clamp(torchStormFlickerChance, 0.0D, 1.0D);
+            torchWarmupSeconds = clamp(torchWarmupSeconds, 0, 30);
+            torchUnderwaterSputterSeconds = clamp(torchUnderwaterSputterSeconds, 0, 30);
         }
 
         private static int clamp(int value, int min, int max) {
