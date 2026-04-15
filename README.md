@@ -51,6 +51,14 @@ From the repository root:
 
 Runtime light timing is configured in `config/dusklights.json`.
 
+Dynamic torch behavior is also configurable:
+
+- `dynamicTorchesEnabled` - enables/disables torch-specific weather and cave behavior.
+- `torchRainBrightnessMultiplier` - brightness multiplier while rain hits a torch.
+- `torchStormFlickerChance` - chance for exposed torches to flicker during thunderstorms.
+- `torchWarmupSeconds` - how long newly placed cave torches take to reach full brightness.
+- `torchUnderwaterSputterSeconds` - sputter duration before submerged torches fully go dark.
+
 Set `autoCompatDiscovery` (default `true`) to enable/disable runtime scanning of modded lights for auto-compat linking.
 
 You can also manually register additional block ids through config with `manualCompatBlockIds`:

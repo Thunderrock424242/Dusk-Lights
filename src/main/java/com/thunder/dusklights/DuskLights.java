@@ -37,9 +37,11 @@ public final class DuskLights {
         initialized = true;
         LOGGER.info("Initializing {}", MOD_ID);
         DuskLightsConfig.Values config = DuskLightsConfig.get();
-        LOGGER.info("Loaded dusk config: sunsetStartTick={}, sunsetRampMinutes={}, sunriseStartTick={}, sunriseRampMinutes={}, autoCompatDiscovery={}, defaultSensorEnabled={}, manualCompatBlockIds={}",
+        LOGGER.info("Loaded dusk config: sunsetStartTick={}, sunsetRampMinutes={}, sunriseStartTick={}, sunriseRampMinutes={}, autoCompatDiscovery={}, defaultSensorEnabled={}, manualCompatBlockIds={}, dynamicTorchesEnabled={}, torchRainBrightnessMultiplier={}, torchStormFlickerChance={}, torchWarmupSeconds={}, torchUnderwaterSputterSeconds={}",
                 config.sunsetStartTick, config.sunsetRampMinutes, config.sunriseStartTick, config.sunriseRampMinutes,
-                config.autoCompatDiscovery, config.defaultSensorEnabled, config.manualCompatBlockIds.size());
+                config.autoCompatDiscovery, config.defaultSensorEnabled, config.manualCompatBlockIds.size(),
+                config.dynamicTorchesEnabled, config.torchRainBrightnessMultiplier, config.torchStormFlickerChance,
+                config.torchWarmupSeconds, config.torchUnderwaterSputterSeconds);
 
         AutoCompatDiscovery.registerConfiguredLinkableBlocks(config.manualCompatBlockIds);
 
@@ -112,6 +114,7 @@ public final class DuskLights {
 
             var linkedPos = event.getPos().immutable();
             LinkedLightsSavedData.get(serverLevel).addLinked(linkedPos);
+            DuskLightsLogic.registerPlayerPlacedLight(serverLevel, linkedPos, event.getPlacedBlock());
             DuskLightsLogic.refreshLinkedLight(serverLevel, linkedPos);
         }
 
